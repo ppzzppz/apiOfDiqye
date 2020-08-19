@@ -21,39 +21,46 @@ myapp = msum
   , consum "share" >> share
   ]
 
-type ShareData = (Text,[Connection])
+type ShareData = (Text,[(Integer,Connection)],Integer)
 shareData :: MVar ShareData
-shareData = unsafePerformIO $ newMVar ("[0,\"Welcome\",0]",[])
+shareData = unsafePerformIO $ newMVar ("[0,\"Welcome\",0]",[],0)
 
 shareText :: ServerApp
 shareText pending_conn = do
   conn <-  acceptRequest pending_conn
-  (initMsg,_) <- readMVar shareData
+  (initMsg,conns,n) <- takeMVar shareData
   -- withPingThread conn 30 (pure ()) (pure ())
   sendTextData conn initMsg
-  modifyMVar_ shareData $ \(msg,conns) -> do
-    pure (msg,conn:conns)
+  putMVar shareData (initMsg,(n,conn):conns,n+1)
   forever $ do
-    msg <- receiveData conn
-    modifyMVar_ shareData $ \(_,b) -> pure (msg,b)
-    sendAll
+    msg <- receiveData conn 
+    modifyMVar_ shareData $ \(_,b,n) -> pure (msg,b,n)
+    sendAll n
 
-sendAll :: IO ()
-sendAll = do
-  (msg,conns) <- takeMVar shareData
-  newConns <- newMVar ([])
-  mapM_ (send msg newConns) conns
-  a <- readMVar newConns
-  putMVar shareData (msg,a)
-  where send msg mvar conn  = send_ conn msg  mvar `catch` errorHandle
+sendAll :: Integer -> IO ()
+sendAll nsent = do
+  (msg,conns,n) <- takeMVar shareData
+  let meList = filter ((==nsent) . fst) conns
+  let peers = filter ((/=nsent) . fst) conns
+  successPeers <- sendMsgFor msg peers
+  me <- sendOkForMe meList
+  putMVar shareData (msg,me ++ successPeers,n)
 
-        errorHandle :: ConnectionException -> IO ()
-        errorHandle e = pure ()
 
-        send_ conn msg mvar = do
-          sendTextData conn msg
-          modifyMVar_ mvar $ \a -> pure $ conn:a
+sendOkForMe ::  [(Integer,Connection)] -> IO [(Integer, Connection)]
+sendOkForMe [] = pure []
+sendOkForMe (peer@(_,conn):_) = do
+  success <- (True <$ sendTextData conn ("[700]"::Text)) `catch` errorHandle
+  if success then pure [peer] else pure []
 
+sendMsgFor :: Text -> [(Integer, Connection)] -> IO [(Integer, Connection)]
+sendMsgFor msg [] = pure []
+sendMsgFor msg (peer@(_,conn):xs) = do
+  success <- (True <$ sendTextData conn msg) `catch` errorHandle
+  if success then pure (:) <*> pure peer <*> sendMsgFor msg xs else sendMsgFor msg xs
+
+errorHandle :: ConnectionException -> IO Bool
+errorHandle _ = pure False  
 
 share :: AppIO
 share = do
