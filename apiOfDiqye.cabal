@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.31.2.
+-- This file has been generated from package.yaml by hpack version 0.33.0.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 9c148e87367d221cb778a37b92922381e43304af3bd5b812b54ef3b9fd61cb0b
+-- hash: 67dd6cd7ebf066d8477c190d2b606fd582fded1eccc2b4628944efdd1a9fbb32
 
 name:           apiOfDiqye
 version:        0.1.0.0
@@ -27,6 +27,7 @@ source-repository head
 
 library
   exposed-modules:
+      Chat
       Lib
   other-modules:
       Paths_apiOfDiqye
@@ -46,11 +47,14 @@ library
     , http-types
     , io-streams
     , neat-interpolation
+    , network
     , scientific
     , string-conversions
     , text
+    , time
     , transformers
     , unordered-containers
+    , websockets
     , yaml
   default-language: Haskell2010
 
@@ -76,11 +80,14 @@ executable apiOfDiqye-exe
     , http-types
     , io-streams
     , neat-interpolation
+    , network
     , scientific
     , string-conversions
     , text
+    , time
     , transformers
     , unordered-containers
+    , websockets
     , yaml
   default-language: Haskell2010
 
@@ -107,10 +114,13 @@ test-suite apiOfDiqye-test
     , http-types
     , io-streams
     , neat-interpolation
+    , network
     , scientific
     , string-conversions
     , text
+    , time
     , transformers
     , unordered-containers
+    , websockets
     , yaml
   default-language: Haskell2010

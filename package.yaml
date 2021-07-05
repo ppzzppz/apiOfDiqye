@@ -39,6 +39,10 @@ dependencies:
 - http-types
 - string-conversions
 - io-streams
+- time
+- websockets
+- network
+- filepath
 
 library:
   source-dirs: src

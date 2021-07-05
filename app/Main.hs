@@ -12,6 +12,9 @@ import Data.Text.Lazy(Text)
 import Control.Concurrent.MVar
 import System.IO.Unsafe
 import Control.Exception
+import Chat
+import System.FilePath.Posix((</>))
+import qualified Data.ByteString as B
 
 
 
@@ -19,6 +22,7 @@ myapp :: AppIO
 myapp = msum
   [ consum "share-text" >> respSocket' shareText
   , consum "share" >> share
+  , consum "chat" >> chatApp
   ]
 
 type ShareData = (Text,[(Integer,Connection)],Integer)
@@ -62,16 +66,31 @@ sendMsgFor msg (peer@(_,conn):xs) = do
 errorHandle :: ConnectionException -> IO Bool
 errorHandle _ = pure False  
 
+certification :: AppIO
+certification = do
+  req <- getRequest
+  let path = rawPathInfo req
+  let (_,a) = B.breakSubstring "miss" path
+  liftIO $ B.putStrLn a
+  guard $ a /= ""
+  liftIO $ putStrLn "after guard1"
+  let maybeAuthen = lookup "Authorization" $ requestHeaders req
+  guard $ maybeAuthen /= (Just "Basic cXpsaGt4OjEwMTMwMTA4") 
+  liftIO $ putStrLn $ show $ maybeAuthen
+  putHeader "WWW-Authenticate" "Basic"
+  respLBS status401 ""
+
+
 share :: AppIO
 share = do
   folder <- shareFolder
-  (dirServe folder ["index.html"] <|> dirBrowse folder)
+  certification <|> (dirServe folder ["index.html"] <|> dirBrowse folder)
 
 shareFolder :: (Monad m,MonadIO m) => m String
 shareFolder =  liftIO $ do
   folder <- lookupEnv "share_folder"
   home <- getHomeDirectory
-  pure $ maybe home id folder 
+  pure $ maybe (home </> "share_folder") id folder 
 
 
 setting = setPort 8899
